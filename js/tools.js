@@ -221,7 +221,7 @@ function getToolContent(toolId) {
             </div>
             <button class="tool-btn" id="generateQR">生成二维码</button>
             <div id="qrcodeResult" style="margin-top: 1.5rem; text-align: center; display: none;">
-                <canvas id="qrcodeCanvas" style="border-radius: 12px;"></canvas>
+                <div id="qrcodeCanvas" style="display: inline-block; padding: 1rem; background: white; border-radius: 12px;"></div>
                 <div style="margin-top: 1rem;">
                     <button class="tool-btn tool-btn-secondary" id="downloadQR">⬇️ 下载二维码</button>
                 </div>
@@ -612,8 +612,12 @@ function initHash() {
         const encoder = new TextEncoder();
         const data = encoder.encode(text);
         
-        // MD5 需要额外库，这里用简化版提示
-        document.getElementById('hashMD5').textContent = '(需要引入MD5库)';
+        // MD5 (使用 blueimp-md5 库)
+        if (typeof md5 !== 'undefined') {
+            document.getElementById('hashMD5').textContent = md5(text);
+        } else {
+            document.getElementById('hashMD5').textContent = '(MD5库加载失败)';
+        }
         
         // SHA-1
         const sha1Buffer = await crypto.subtle.digest('SHA-1', data);
@@ -756,8 +760,10 @@ function initImageCompress() {
     }
 }
 
-// 二维码生成（简化版，需要qrcode库）
+// 二维码生成
 function initQRCode() {
+    let qrcode = null;
+    
     document.getElementById('generateQR').addEventListener('click', () => {
         const text = document.getElementById('qrcodeInput').value;
         if (!text) {
@@ -765,29 +771,44 @@ function initQRCode() {
             return;
         }
         
-        const canvas = document.getElementById('qrcodeCanvas');
-        const ctx = canvas.getContext('2d');
         const fg = document.getElementById('qrForeground').value;
         const bg = document.getElementById('qrBackground').value;
+        const resultDiv = document.getElementById('qrcodeResult');
         
-        // 简化版：显示占位图
-        canvas.width = 200;
-        canvas.height = 200;
-        ctx.fillStyle = bg;
-        ctx.fillRect(0, 0, 200, 200);
-        ctx.fillStyle = fg;
-        ctx.font = '14px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.fillText('需要引入QRCode.js库', 100, 90);
-        ctx.fillText('实现二维码生成', 100, 110);
+        // 清除之前的二维码
+        const qrContainer = document.getElementById('qrcodeCanvas');
+        qrContainer.innerHTML = '';
         
-        document.getElementById('qrcodeResult').style.display = 'block';
+        // 检查 QRCode 库是否加载
+        if (typeof QRCode === 'undefined') {
+            qrContainer.innerHTML = '<p style="color: var(--error);">二维码库加载失败，请刷新页面重试</p>';
+            resultDiv.style.display = 'block';
+            return;
+        }
         
+        // 生成新二维码
+        qrcode = new QRCode(qrContainer, {
+            text: text,
+            width: 200,
+            height: 200,
+            colorDark: fg,
+            colorLight: bg,
+            correctLevel: QRCode.CorrectLevel.H
+        });
+        
+        resultDiv.style.display = 'block';
+        
+        // 下载按钮
         document.getElementById('downloadQR').onclick = () => {
-            const link = document.createElement('a');
-            link.download = 'qrcode.png';
-            link.href = canvas.toDataURL();
-            link.click();
+            setTimeout(() => {
+                const img = qrContainer.querySelector('img');
+                if (img) {
+                    const link = document.createElement('a');
+                    link.download = 'qrcode.png';
+                    link.href = img.src;
+                    link.click();
+                }
+            }, 100);
         };
     });
 }
@@ -1034,5 +1055,348 @@ function initMarkdownPreview() {
     
     input.addEventListener('input', renderMarkdown);
     renderMarkdown(); // 初始渲染
+}
+
+// 图片格式转换
+function initImageConvert() {
+    const dropZone = document.getElementById('convertDropZone');
+    const input = document.getElementById('convertInput');
+    const preview = document.getElementById('convertPreview');
+    const formatSelect = document.getElementById('convertFormat');
+    
+    let currentFile = null;
+    let convertedBlob = null;
+    
+    dropZone.addEventListener('click', () => input.click());
+    
+    dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropZone.classList.add('drag-over');
+    });
+    
+    dropZone.addEventListener('dragleave', () => {
+        dropZone.classList.remove('drag-over');
+    });
+    
+    dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('drag-over');
+        const file = e.dataTransfer.files[0];
+        if (file && file.type.startsWith('image/')) {
+            handleImage(file);
+        }
+    });
+    
+    input.addEventListener('change', (e) => {
+        if (e.target.files[0]) {
+            handleImage(e.target.files[0]);
+        }
+    });
+    
+    formatSelect.addEventListener('change', () => {
+        if (currentFile) {
+            convertImage(currentFile);
+        }
+    });
+    
+    function handleImage(file) {
+        currentFile = file;
+        convertImage(file);
+    }
+    
+    function convertImage(file) {
+        const img = new Image();
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = img.width;
+            canvas.height = img.height;
+            
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0);
+            
+            const format = formatSelect.value;
+            const quality = format === 'image/png' ? 1 : 0.92;
+            
+            canvas.toBlob((blob) => {
+                convertedBlob = blob;
+                document.getElementById('convertImage').src = URL.createObjectURL(blob);
+                preview.style.display = 'block';
+            }, format, quality);
+        };
+        img.src = URL.createObjectURL(file);
+    }
+    
+    document.getElementById('downloadConverted').addEventListener('click', () => {
+        if (convertedBlob) {
+            const format = formatSelect.value;
+            const ext = format.split('/')[1];
+            const link = document.createElement('a');
+            link.download = `converted.${ext}`;
+            link.href = URL.createObjectURL(convertedBlob);
+            link.click();
+        }
+    });
+}
+
+// 图片尺寸调整
+function initImageResize() {
+    const dropZone = document.getElementById('resizeDropZone');
+    const input = document.getElementById('resizeInput');
+    const preview = document.getElementById('resizePreview');
+    const widthInput = document.getElementById('resizeWidth');
+    const heightInput = document.getElementById('resizeHeight');
+    const keepRatio = document.getElementById('keepRatio');
+    const canvas = document.getElementById('resizeCanvas');
+    
+    let currentImage = null;
+    let aspectRatio = 1;
+    
+    dropZone.addEventListener('click', () => input.click());
+    
+    dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropZone.classList.add('drag-over');
+    });
+    
+    dropZone.addEventListener('dragleave', () => {
+        dropZone.classList.remove('drag-over');
+    });
+    
+    dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('drag-over');
+        const file = e.dataTransfer.files[0];
+        if (file && file.type.startsWith('image/')) {
+            handleImage(file);
+        }
+    });
+    
+    input.addEventListener('change', (e) => {
+        if (e.target.files[0]) {
+            handleImage(e.target.files[0]);
+        }
+    });
+    
+    function handleImage(file) {
+        const img = new Image();
+        img.onload = () => {
+            currentImage = img;
+            aspectRatio = img.width / img.height;
+            
+            widthInput.value = img.width;
+            heightInput.value = img.height;
+            document.getElementById('originalDimensions').textContent = `${img.width} × ${img.height}`;
+            
+            resizeImage();
+            preview.style.display = 'block';
+        };
+        img.src = URL.createObjectURL(file);
+    }
+    
+    widthInput.addEventListener('input', () => {
+        if (keepRatio.checked && currentImage) {
+            heightInput.value = Math.round(widthInput.value / aspectRatio);
+        }
+        resizeImage();
+    });
+    
+    heightInput.addEventListener('input', () => {
+        if (keepRatio.checked && currentImage) {
+            widthInput.value = Math.round(heightInput.value * aspectRatio);
+        }
+        resizeImage();
+    });
+    
+    function resizeImage() {
+        if (!currentImage) return;
+        
+        const newWidth = parseInt(widthInput.value) || currentImage.width;
+        const newHeight = parseInt(heightInput.value) || currentImage.height;
+        
+        canvas.width = newWidth;
+        canvas.height = newHeight;
+        
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(currentImage, 0, 0, newWidth, newHeight);
+        
+        document.getElementById('newDimensions').textContent = `${newWidth} × ${newHeight}`;
+    }
+    
+    document.getElementById('downloadResized').addEventListener('click', () => {
+        const link = document.createElement('a');
+        link.download = 'resized.png';
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+    });
+}
+
+// 图片裁剪
+function initImageCrop() {
+    const dropZone = document.getElementById('cropDropZone');
+    const input = document.getElementById('cropInput');
+    const preview = document.getElementById('cropPreview');
+    const canvas = document.getElementById('cropCanvas');
+    const ratioButtons = document.querySelectorAll('.crop-ratio');
+    
+    let currentImage = null;
+    let currentRatio = 'free';
+    
+    dropZone.addEventListener('click', () => input.click());
+    
+    dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropZone.classList.add('drag-over');
+    });
+    
+    dropZone.addEventListener('dragleave', () => {
+        dropZone.classList.remove('drag-over');
+    });
+    
+    dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('drag-over');
+        const file = e.dataTransfer.files[0];
+        if (file && file.type.startsWith('image/')) {
+            handleImage(file);
+        }
+    });
+    
+    input.addEventListener('change', (e) => {
+        if (e.target.files[0]) {
+            handleImage(e.target.files[0]);
+        }
+    });
+    
+    ratioButtons.forEach(btn => {
+        btn.addEventListener('click', () => {
+            ratioButtons.forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            btn.style.background = 'var(--accent-primary)';
+            btn.style.color = 'white';
+            
+            ratioButtons.forEach(b => {
+                if (b !== btn) {
+                    b.style.background = '';
+                    b.style.color = '';
+                }
+            });
+            
+            currentRatio = btn.dataset.ratio;
+            if (currentImage) {
+                cropImage();
+            }
+        });
+    });
+    
+    function handleImage(file) {
+        const img = new Image();
+        img.onload = () => {
+            currentImage = img;
+            cropImage();
+            preview.style.display = 'block';
+        };
+        img.src = URL.createObjectURL(file);
+    }
+    
+    function cropImage() {
+        if (!currentImage) return;
+        
+        let cropWidth = currentImage.width;
+        let cropHeight = currentImage.height;
+        let offsetX = 0;
+        let offsetY = 0;
+        
+        if (currentRatio !== 'free') {
+            const [w, h] = currentRatio.split(':').map(Number);
+            const targetRatio = w / h;
+            const imgRatio = currentImage.width / currentImage.height;
+            
+            if (imgRatio > targetRatio) {
+                // 图片太宽，裁剪宽度
+                cropWidth = currentImage.height * targetRatio;
+                offsetX = (currentImage.width - cropWidth) / 2;
+            } else {
+                // 图片太高，裁剪高度
+                cropHeight = currentImage.width / targetRatio;
+                offsetY = (currentImage.height - cropHeight) / 2;
+            }
+        }
+        
+        canvas.width = cropWidth;
+        canvas.height = cropHeight;
+        
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(currentImage, offsetX, offsetY, cropWidth, cropHeight, 0, 0, cropWidth, cropHeight);
+    }
+    
+    document.getElementById('downloadCropped').addEventListener('click', () => {
+        const link = document.createElement('a');
+        link.download = 'cropped.png';
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+    });
+}
+
+// Favicon生成
+function initFavicon() {
+    const dropZone = document.getElementById('faviconDropZone');
+    const input = document.getElementById('faviconInput');
+    const result = document.getElementById('faviconResult');
+    
+    const sizes = [16, 32, 64, 128];
+    const canvases = sizes.map(size => document.getElementById(`favicon${size}`));
+    
+    dropZone.addEventListener('click', () => input.click());
+    
+    dropZone.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        dropZone.classList.add('drag-over');
+    });
+    
+    dropZone.addEventListener('dragleave', () => {
+        dropZone.classList.remove('drag-over');
+    });
+    
+    dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('drag-over');
+        const file = e.dataTransfer.files[0];
+        if (file && file.type.startsWith('image/')) {
+            handleImage(file);
+        }
+    });
+    
+    input.addEventListener('change', (e) => {
+        if (e.target.files[0]) {
+            handleImage(e.target.files[0]);
+        }
+    });
+    
+    function handleImage(file) {
+        const img = new Image();
+        img.onload = () => {
+            // 生成各种尺寸的favicon
+            canvases.forEach((canvas, index) => {
+                const size = sizes[index];
+                canvas.width = size;
+                canvas.height = size;
+                
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, size, size);
+            });
+            
+            result.style.display = 'block';
+        };
+        img.src = URL.createObjectURL(file);
+    }
+    
+    document.getElementById('downloadFavicon').addEventListener('click', () => {
+        // 下载32x32的作为主favicon
+        const canvas = document.getElementById('favicon32');
+        const link = document.createElement('a');
+        link.download = 'favicon.png';
+        link.href = canvas.toDataURL('image/png');
+        link.click();
+    });
 }
 

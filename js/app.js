@@ -165,6 +165,15 @@ function initToolFunctions(toolId) {
         case 'image-compress':
             initImageCompress();
             break;
+        case 'image-convert':
+            initImageConvert();
+            break;
+        case 'image-resize':
+            initImageResize();
+            break;
+        case 'image-crop':
+            initImageCrop();
+            break;
         case 'qrcode':
             initQRCode();
             break;
@@ -179,6 +188,9 @@ function initToolFunctions(toolId) {
             break;
         case 'markdown-preview':
             initMarkdownPreview();
+            break;
+        case 'favicon':
+            initFavicon();
             break;
     }
 }
