@@ -124,19 +124,20 @@ function getDonateContent() {
         <div style="text-align: center; padding: 2rem;">
             <div style="display: flex; justify-content: center; gap: 3rem; flex-wrap: wrap;">
                 <div>
-                    <p style="margin-bottom: 1rem; font-weight: 500;">微信支付</p>
-                    <div style="width: 180px; height: 180px; background: var(--bg-card); border-radius: 12px; display: flex; align-items: center; justify-content: center; border: 1px solid var(--border-color);">
-                        <span style="color: var(--text-muted);">二维码占位</span>
+                    <p style="margin-bottom: 1rem; font-weight: 500; color: #07C160;">💚 微信支付</p>
+                    <div style="width: 200px; height: 200px; background: #fff; border-radius: 16px; display: flex; align-items: center; justify-content: center; border: 2px solid #07C160; padding: 8px; box-shadow: 0 4px 12px rgba(7, 193, 96, 0.15);">
+                        <img src="assets/payment/wechat-pay.jpg" alt="微信收款码" style="max-width: 100%; max-height: 100%; border-radius: 8px; object-fit: contain;">
                     </div>
                 </div>
                 <div>
-                    <p style="margin-bottom: 1rem; font-weight: 500;">支付宝</p>
-                    <div style="width: 180px; height: 180px; background: var(--bg-card); border-radius: 12px; display: flex; align-items: center; justify-content: center; border: 1px solid var(--border-color);">
-                        <span style="color: var(--text-muted);">二维码占位</span>
+                    <p style="margin-bottom: 1rem; font-weight: 500; color: #1677FF;">💙 支付宝</p>
+                    <div style="width: 200px; height: 200px; background: #fff; border-radius: 16px; display: flex; align-items: center; justify-content: center; border: 2px solid #1677FF; padding: 8px; box-shadow: 0 4px 12px rgba(22, 119, 255, 0.15);">
+                        <img src="assets/payment/alipay.jpg" alt="支付宝收款码" style="max-width: 100%; max-height: 100%; border-radius: 8px; object-fit: contain;">
                     </div>
                 </div>
             </div>
-            <p style="margin-top: 2rem; color: var(--text-muted);">感谢您的支持！🙏</p>
+            <p style="margin-top: 2rem; color: var(--text-muted); font-size: 0.95rem;">您的支持是我持续更新的动力！🙏</p>
+            <p style="margin-top: 0.5rem; color: var(--text-muted); font-size: 0.85rem; opacity: 0.7;">扫描二维码即可打赏</p>
         </div>
     `;
 }
@@ -191,6 +192,43 @@ function initToolFunctions(toolId) {
             break;
         case 'favicon':
             initFavicon();
+            break;
+        // ========== 新增工具 ==========
+        case 'password-gen':
+            initPasswordGen();
+            break;
+        case 'uuid-gen':
+            initUUIDGen();
+            break;
+        case 'jwt-decoder':
+            initJWTDecoder();
+            break;
+        case 'url-codec':
+            initURLCodec();
+            break;
+        case 'yaml-json':
+            initYAMLJSON();
+            break;
+        case 'sql-format':
+            initSQLFormat();
+            break;
+        case 'cron-parser':
+            initCronParser();
+            break;
+        case 'chinese-convert':
+            initChineseConvert();
+            break;
+        case 'html-escape':
+            initHTMLEscape();
+            break;
+        case 'lorem-gen':
+            initLoremGen();
+            break;
+        case 'exif-viewer':
+            initExifViewer();
+            break;
+        case 'image-to-pdf':
+            initImageToPDF();
             break;
     }
 }
